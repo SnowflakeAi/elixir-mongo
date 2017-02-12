@@ -101,7 +101,8 @@ defmodule Mongo.Response do
   def cmd(%Mongo.Response{nbdoc: 1, buffer: buffer}) do
     case buffer |> Bson.decode do
       nil -> %Mongo.Error{msg: :"no document received"}
-      %{ok: ok}=doc when ok>0 -> {:ok, doc}
+      %{"ok" => ok} = doc when ok > 0 -> {:ok, doc}
+      %{ok: ok} = doc when ok > 0 -> {:ok, doc}
       errdoc -> %Mongo.Error{msg: :"cmd error", acc: errdoc}
     end
   end
@@ -113,7 +114,8 @@ defmodule Mongo.Response do
   """
   def count(response) do
     case cmd(response) do
-      {:ok, doc} -> {:ok, doc[:n]}
+      {:ok, %{"n" => n}} -> {:ok, n}
+      {:ok, %{n: n}} -> {:ok, n}
       error -> error
     end
   end
@@ -137,7 +139,8 @@ defmodule Mongo.Response do
   """
   def distinct(response) do
     case cmd(response) do
-      {:ok, doc} -> {:ok, doc[:values]}
+      {:ok, %{"values" => values}} -> {:ok, values}
+      {:ok, %{values: values}} -> {:ok, values}
       error -> error
     end
   end
@@ -149,11 +152,16 @@ defmodule Mongo.Response do
   """
   def mr(response) do
     case cmd(response) do
-      {:ok, doc} ->
-        case doc[:results] do
+      {:ok, %{"results" => r}} ->
+        case r do
           nil -> :ok
           results -> {:ok, results}
         end
+      {:ok, %{results: r}} ->
+        case r do
+           nil -> :ok
+           results -> {:ok, results}
+         end
       error -> error
     end
   end
@@ -165,7 +173,8 @@ defmodule Mongo.Response do
   """
   def group(response) do
     case cmd(response) do
-      {:ok, doc} -> {:ok, doc[:retval]}
+      {:ok, %{"retval" => retval}} -> {:ok, retval}
+      {:ok, %{retval: retval}} -> {:ok, retval}
       error -> error
     end
   end
@@ -177,7 +186,8 @@ defmodule Mongo.Response do
   """
   def aggregate(response) do
     case cmd(response) do
-      {:ok, doc} -> doc[:result]
+      {:ok, %{"result" => result}} -> result
+      {:ok, %{result: result}} -> result
       error -> error
     end
   end
@@ -188,7 +198,8 @@ defmodule Mongo.Response do
   """
   def getnonce(response) do
     case cmd(response) do
-      {:ok, doc} -> doc[:nonce]
+      {:ok, %{"nonce" => nonce}} -> nonce
+      {:ok, %{nonce: nonce}} -> nonce
       error -> error
     end
   end
@@ -199,11 +210,16 @@ defmodule Mongo.Response do
   """
   def error(response) do
     case cmd(response) do
-      {:ok, doc} ->
-        case doc[:err] do
-          nil -> :ok
-          _ -> {:error, doc}
+      {:ok, doc = %{"err" => err}} ->
+         case err do
+           nil -> :ok
+           _ -> {:error, doc}
         end
+      {:ok, doc = %{err: err}} ->
+         case err do
+           nil -> :ok
+           _ -> {:error, doc}
+         end
       error -> error
     end
   end
